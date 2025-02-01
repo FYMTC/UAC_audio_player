@@ -31,12 +31,12 @@ static const char *TAG = "UAC HOST";
 #define DEFAULT_UAC_BITS 16
 // 定义默认的USB音频类（UAC）通道数为2（立体声）
 #define DEFAULT_UAC_CH 2
-// 定义USB主机任务堆栈大小为3KB
+// 定义USB主机任务堆栈大小"usb_events"
 #define USB_HOST_TASK_STACK_SIZE 1024 * 3
-// 定义USB音频类（UAC）任务堆栈大小为3KB
+// 定义USB音频类（UAC）任务堆栈大小 "uac_events"
 #define UAC_TASK_STACK_SIZE 1024 * 3
-// 定义USB音频类主机任务堆栈大小为3KB
-#define USB_UAC_Host_STACK_SIZE 1024 * 3
+// 定义USB音频类主机任务堆栈大小 "USB UAC Host"
+#define USB_UAC_Host_STACK_SIZE 1024 * 2
 
 
 static QueueHandle_t s_event_queue = NULL;          // 事件队列

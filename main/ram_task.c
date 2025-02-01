@@ -56,27 +56,33 @@ void print_ram_info()
     UBaseType_t taskCount, index;
     uint32_t totalRunTime;
 
-    // 获取当前任务数量
-    taskCount = uxTaskGetNumberOfTasks();
+    // 获取当前任务数量并保存
+    UBaseType_t originalTaskCount = uxTaskGetNumberOfTasks();
 
     // 分配内存来存储任务状态
-    taskStatusArray = (TaskStatus_t *)pvPortMalloc(taskCount * sizeof(TaskStatus_t));
+    taskStatusArray = (TaskStatus_t *)pvPortMalloc(originalTaskCount * sizeof(TaskStatus_t));
 
     if (taskStatusArray != NULL)
     {
         // 获取任务状态信息
-        taskCount = uxTaskGetSystemState(taskStatusArray, taskCount, &totalRunTime);
+        taskCount = uxTaskGetSystemState(taskStatusArray, originalTaskCount, &totalRunTime);
 
         if (taskCount > 0)
         {
             // 分配内存来存储排序后的任务信息
-            TaskInfo *taskInfoArray = (TaskInfo *)pvPortMalloc(taskCount * sizeof(TaskInfo));
+            TaskInfo *taskInfoArray = (TaskInfo *)pvPortMalloc(originalTaskCount * sizeof(TaskInfo));
+            if (taskInfoArray == NULL) {
+                ESP_LOGE(TAG, "Failed to allocate task info array");
+                vPortFree(taskStatusArray);
+                return;
+            }
+
             // 打印表头
             printf("Task Name\t\tHigh Water Mark\tCPU Usage\n");
             printf("--------------------------------------------\n");
 
             // 打印每个任务的高水位线和 CPU 占用率
-            for (index = 0; index < taskCount; index++)
+            for (index = 0; index < originalTaskCount; index++) // 使用 originalTaskCount
             {
                 // 获取任务的栈高水位线
                 taskInfoArray[index].highWaterMark = uxTaskGetStackHighWaterMark(taskStatusArray[index].xHandle);
@@ -87,24 +93,33 @@ void print_ram_info()
                 {
                     taskInfoArray[index].cpuUsage = (taskStatusArray[index].ulRunTimeCounter * 100) / totalRunTime;
                 }
-                strncpy(taskInfoArray[index].taskName, taskStatusArray[index].pcTaskName, MAX_TASK_NAME_LEN);
+
+                // 安全复制任务名
+                strncpy(taskInfoArray[index].taskName, taskStatusArray[index].pcTaskName, MAX_TASK_NAME_LEN - 1);
+                taskInfoArray[index].taskName[MAX_TASK_NAME_LEN - 1] = '\0';
             }
-            qsort(taskInfoArray, taskCount, sizeof(TaskInfo), compare_tasks_info);
-            for (index = 0; index < taskCount; index++)
+
+            // 对任务信息进行排序
+            qsort(taskInfoArray, originalTaskCount, sizeof(TaskInfo), compare_tasks_info);
+
+            // 打印排序后的任务信息
+            for (index = 0; index < originalTaskCount; index++)
             {
-                // 打印任务信息
                 printf("%-16s\t%u\t\t%lu%%\n",
                        taskInfoArray[index].taskName,
                        taskInfoArray[index].highWaterMark,
                        taskInfoArray[index].cpuUsage);
             }
+
+            // 释放任务信息数组内存
+            vPortFree(taskInfoArray);
         }
         else
         {
             printf("Failed to get task state information\n");
         }
 
-        // 释放内存
+        // 释放任务状态数组内存
         vPortFree(taskStatusArray);
     }
     else
@@ -112,6 +127,7 @@ void print_ram_info()
         printf("Failed to allocate memory for task status array\n");
     }
 }
+
 // info 刷新任务
 void info_task(void *pvParameter)
 {
@@ -122,9 +138,10 @@ void info_task(void *pvParameter)
     }
 }
 
+
 // 初始化 info 刷新任务
 void start_info_task()
 {
     portCONFIGURE_TIMER_FOR_RUN_TIME_STATS();
-    xTaskCreatePinnedToCore(info_task, "tasks info Task", 1024 * 3, NULL, 1, NULL, 1);
+    xTaskCreatePinnedToCore(info_task, "heap info Task", 1024 * 3, NULL, 1, NULL, 1);
 }

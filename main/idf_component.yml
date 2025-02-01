@@ -1,5 +1,6 @@
 ## IDF Component Manager Manifest File
 dependencies:
+  espressif/led_strip: "^3.0.0"
   espressif/esp_audio_codec: "^2.0.3"
   espressif/usb_host_uac: "^1.2.0"
   ## Required IDF version
